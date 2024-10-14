@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "firstname": "Александр",
+    "name": "Кардио тренировки"
+  },
+  {
+    "id": 2,
+    "firstname": "Мария",
+    "name": "Силовые тренировки"
+  },
+  {
+    "id": 3,
+    "firstname": "Павел",
+    "name": "Йога"
+  },
+  {
+    "id": null,
+    "firstname": "Катерина",
+    "name": null
+  },
+  {
+    "id": null,
+    "firstname": "Елена",
+    "name": null
+  },
+  {
+    "id": null,
+    "firstname": "Андрей",
+    "name": null
+  },
+  {
+    "id": null,
+    "firstname": "Елена",
+    "name": null
+  },
+  {
+    "id": 2,
+    "firstname": "Павел",
+    "name": "Силовые тренировки"
+  }
+]

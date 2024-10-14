@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "firstname": "Александр",
+    "section_id": 1,
+    "name": "Кардио тренировки"
+  },
+  {
+    "id": 2,
+    "firstname": "Мария",
+    "section_id": 2,
+    "name": "Силовые тренировки"
+  },
+  {
+    "id": 3,
+    "firstname": "Павел",
+    "section_id": 3,
+    "name": "Йога"
+  },
+  {
+    "id": 4,
+    "firstname": "Катерина",
+    "section_id": null,
+    "name": null
+  },
+  {
+    "id": 5,
+    "firstname": "Елена",
+    "section_id": null,
+    "name": null
+  },
+  {
+    "id": 6,
+    "firstname": "Андрей",
+    "section_id": null,
+    "name": null
+  },
+  {
+    "id": 7,
+    "firstname": "Елена",
+    "section_id": null,
+    "name": null
+  },
+  {
+    "id": 8,
+    "firstname": "Павел",
+    "section_id": 2,
+    "name": "Силовые тренировки"
+  }
+]
