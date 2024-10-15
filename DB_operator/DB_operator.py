@@ -52,6 +52,44 @@ class MSSQLOperator:
             json.dump(data, file, ensure_ascii=False, indent=2)
         return f"Создан {filename}.json"
 
+    def create_database(self, database_name):
+        SQL_COMMAND = SQL_Queries.create_db(database_name)
+        try:
+            self.conn.execute(SQL_COMMAND)
+        except pyodbc.ProgrammingError as ex:
+            print(ex)
+        else:
+            return f"База данных: {database_name} создана"
+
+    def create_table(self, database_name, table_name, sql_query):
+        cursor = self.conn.cursor()
+        cursor.execute(f'USE {database_name}')
+        SQL_Query = sql_query(table_name)
+        try:
+            cursor.execute(SQL_Query)
+        except pyodbc.ProgrammingError as ex:
+            return ex
+        else:
+            return f"Таблица: {table_name} создана"
+
+    @staticmethod
+    def get_data_from_json(filename):
+        with open(filename, 'r', encoding='utf-8') as file:
+            python_data = json.load(file)
+            return python_data
+
+    def fill_table(self, database_name, table_name, filename, sql_query):
+        cursor = self.conn.cursor()
+        cursor.execute(f"USE {database_name}")
+        data_to_fill_list = self.get_data_from_json(filename)
+        try:
+            for data_to_fill in data_to_fill_list:
+                cursor.execute(sql_query(table_name, data_to_fill))
+        except pyodbc.Error as ex:
+            return ex
+        else:
+            return "Данные помещены в таблицу"
+
 
 if __name__ == "__main__":
     load_dotenv()
@@ -61,78 +99,90 @@ if __name__ == "__main__":
     PASSWORD = os.getenv('MS_SQL_KEY')
     db_operator = MSSQLOperator(ConnectDB.connect_to_db(SERVER, DATABASE, USER, PASSWORD))
 
-    # два запроса Exists;
 
-    condition = ("WHERE EXISTS (SELECT * FROM Instructors AS i, Sections  AS s "
-                 "WHERE i.id = Visitors.instructor_id "
-                 "AND i.section_id = s.id "
-                 "AND s.name <> 'Йога')")
-    result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition)
-    print(db_operator.load_data_to_json("exists_1", result))
+    def create_queries():
+        print(db_operator.create_database("TestDB"))
+        print(db_operator.create_table("TestDB", "test_table", SQL_Queries.create_test))
+        file_path = r"../jsons/test_data.json"
+        print(db_operator.fill_table("TestDB", "test_table", file_path, SQL_Queries.fill_test))
+        result = db_operator.select_query("TestDB", ("*",), "test_table")
+        print(db_operator.load_data_to_json("test_table_request", result))
 
-    condition = ("WHERE EXISTS (SELECT * FROM Instructors AS i, Sections AS s "
-                 "WHERE i.id = Visitors.instructor_id "
-                 "AND i.section_id = s.id "
-                 "AND s.name = 'Силовые тренировки')")
-    result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition)
-    print(db_operator.load_data_to_json("exists_2", result))
+    def request_queries():
+        # два запроса Exists;
 
-    # по одному запросу на ANY/SOME;
+        condition = ("WHERE EXISTS (SELECT * FROM Instructors AS i, Sections  AS s "
+                     "WHERE i.id = Visitors.instructor_id "
+                     "AND i.section_id = s.id "
+                     "AND s.name <> 'Йога')")
+        result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition)
+        print(db_operator.load_data_to_json("exists_1", result))
 
-    condition = "WHERE id = ANY(SELECT id FROM Visitors WHERE DATEPART(DAY, visit_date) > 3)"
-    result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition)
-    print(db_operator.load_data_to_json("full_join", result))
+        condition = ("WHERE EXISTS (SELECT * FROM Instructors AS i, Sections AS s "
+                     "WHERE i.id = Visitors.instructor_id "
+                     "AND i.section_id = s.id "
+                     "AND s.name = 'Силовые тренировки')")
+        result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition)
+        print(db_operator.load_data_to_json("exists_2", result))
 
-    condition = "WHERE section_id = SOME (SELECT id FROM Sections WHERE name = 'Кардио тренировки')"
-    result = db_operator.select_query("Sections", ("firstname", "id"), "Instructors", condition)
-    print(db_operator.load_data_to_json("full_join", result))
+        # по одному запросу на ANY/SOME;
 
-    # один запрос ALL;
+        condition = "WHERE id = ANY(SELECT id FROM Visitors WHERE DATEPART(DAY, visit_date) > 3)"
+        result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition)
+        print(db_operator.load_data_to_json("full_join", result))
 
-    condition = "WHERE attendance >= ALL (SELECT attendance FROM Visitors)"
-    result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition)
-    print(db_operator.load_data_to_json("all", result))
+        condition = "WHERE section_id = SOME (SELECT id FROM Sections WHERE name = 'Кардио тренировки')"
+        result = db_operator.select_query("Sections", ("firstname", "id"), "Instructors", condition)
+        print(db_operator.load_data_to_json("full_join", result))
 
-    # один запрос на UNION;
+        # один запрос ALL;
 
-    condition_1 = "WHERE visit_date BETWEEN '2024-01-01' AND '2024-03-31'"
-    condition_2 = "WHERE visit_date BETWEEN '2024-04-01' AND '2024-06-30'"
-    union_query = db_operator.get_select_query("Sections", ("firstname", "id"), "Visitors", condition_1)
-    result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition_2, union_query)
-    print(db_operator.load_data_to_json("union", result))
+        condition = "WHERE attendance >= ALL (SELECT attendance FROM Visitors)"
+        result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition)
+        print(db_operator.load_data_to_json("all", result))
 
-    # один запрос на UNION ALL;
+        # один запрос на UNION;
 
-    condition_1 = "WHERE section_id = 1"
-    condition_2 = "WHERE section_id = 3"
-    union_query = f"ALL {db_operator.get_select_query("Sections", ("firstname", "id"), "Instructors", condition_1)}"
-    result = db_operator.select_query("Sections", ("firstname", "id"), "Instructors", condition_2, union_query)
-    print(db_operator.load_data_to_json("union_all", result))
+        condition_1 = "WHERE visit_date BETWEEN '2024-01-01' AND '2024-03-31'"
+        condition_2 = "WHERE visit_date BETWEEN '2024-04-01' AND '2024-06-30'"
+        union_query = db_operator.get_select_query("Sections", ("firstname", "id"), "Visitors", condition_1)
+        result = db_operator.select_query("Sections", ("firstname", "id"), "Visitors", condition_2, union_query)
+        print(db_operator.load_data_to_json("union", result))
 
-    # по одному запросу на все JOIN (INNER/LEFT/RIGHT/LEFT+RIGHT/FULL) - всего пять штук;
+        # один запрос на UNION ALL;
 
-    join = "INNER JOIN Instructors i ON s.id = i.section_id"
-    result = db_operator.select_query("Sections", ("s.id", "s.name", "i.id", "i.firstname"), "Sections s", join)
-    print(db_operator.load_data_to_json("inner", result))
+        condition_1 = "WHERE section_id = 1"
+        condition_2 = "WHERE section_id = 3"
+        union_query = f"ALL {db_operator.get_select_query("Sections", ("firstname", "id"), "Instructors", condition_1)}"
+        result = db_operator.select_query("Sections", ("firstname", "id"), "Instructors", condition_2, union_query)
+        print(db_operator.load_data_to_json("union_all", result))
 
-    join = "LEFT JOIN Sections s ON v.instructor_id = s.id"
-    result = db_operator.select_query("Sections", ("v.id", "v.firstname", "s.id", "s.name"), "Visitors v", join)
-    print(db_operator.load_data_to_json("left", result))
+        # по одному запросу на все JOIN (INNER/LEFT/RIGHT/LEFT+RIGHT/FULL) - всего пять штук;
 
-    join = "RIGHT JOIN Sections s ON v.instructor_id = s.id"
-    result = db_operator.select_query("Sections", ("v.id", "v.firstname", "s.id", "s.name"), "Visitors v", join)
-    print(db_operator.load_data_to_json("right", result))
+        join = "INNER JOIN Instructors i ON s.id = i.section_id"
+        result = db_operator.select_query("Sections", ("s.id", "s.name", "i.id", "i.firstname"), "Sections s", join)
+        print(db_operator.load_data_to_json("inner", result))
 
-    join_1 = "LEFT JOIN Sections s ON v.instructor_id = s.id"
-    join_2 = "RIGHT JOIN Sections s ON v.instructor_id = s.id"
-    union_query = f"{db_operator.get_select_query("Sections", ("v.id", "v.firstname", "s.id", "s.name"), "Visitors v",
-                                                  join_1)}"
-    result = db_operator.select_query("Sections", ("v.id", "v.firstname", "s.id", "s.name"), "Visitors v", join_2,
-                                      union_query)
-    print(db_operator.load_data_to_json("left_right", result))
+        join = "LEFT JOIN Sections s ON v.instructor_id = s.id"
+        result = db_operator.select_query("Sections", ("v.id", "v.firstname", "s.id", "s.name"), "Visitors v", join)
+        print(db_operator.load_data_to_json("left", result))
 
-    join = "FULL JOIN Sections s ON v.instructor_id = s.id"
-    result = db_operator.select_query("Sections", ("v.id", "v.firstname", "s.id AS section_id", "s.name"), "Visitors v", join)
-    print(db_operator.load_data_to_json("full", result))
+        join = "RIGHT JOIN Sections s ON v.instructor_id = s.id"
+        result = db_operator.select_query("Sections", ("v.id", "v.firstname", "s.id", "s.name"), "Visitors v", join)
+        print(db_operator.load_data_to_json("right", result))
 
-    # db_operator.conn.close()
+        join_1 = "LEFT JOIN Sections s ON v.instructor_id = s.id"
+        join_2 = "RIGHT JOIN Sections s ON v.instructor_id = s.id"
+        union_query = f"{db_operator.get_select_query("Sections", ("v.id", "v.firstname", "s.id", "s.name"), "Visitors v",
+                                                      join_1)}"
+        result = db_operator.select_query("Sections", ("v.id", "v.firstname", "s.id", "s.name"), "Visitors v", join_2,
+                                          union_query)
+        print(db_operator.load_data_to_json("left_right", result))
+
+        join = "FULL JOIN Sections s ON v.instructor_id = s.id"
+        result = db_operator.select_query("Sections", ("v.id", "v.firstname", "s.id AS section_id", "s.name"),
+                                          "Visitors v", join)
+        print(db_operator.load_data_to_json("full", result))
+
+    # request_queries()
+    create_queries()
